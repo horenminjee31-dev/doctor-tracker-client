@@ -3,8 +3,8 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import useSWR from "swr";
-import { ChevronRight, Plus, RotateCcw, Stethoscope } from "lucide-react";
-import { buildQuery, fetcher } from "@/lib/api";
+import { ChevronRight, Pencil, Plus, RotateCcw, Stethoscope, Trash2 } from "lucide-react";
+import { apiFetch, buildQuery, fetcher } from "@/lib/api";
 import { formatDate } from "@/lib/format";
 import { useDebouncedValue } from "@/lib/hooks/use-debounced-value";
 import type { Doctor, FilterOptions, Paginated } from "@/lib/types";
@@ -17,10 +17,13 @@ import { TableSkeleton } from "@/components/ui/skeleton";
 import { EmptyState, ErrorState } from "@/components/ui/states";
 import { FilterDate, FilterSelect, SearchField } from "@/components/ui/filter-bar";
 import { DoctorFormModal } from "@/components/doctors/doctor-form-modal";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { useToast } from "@/components/providers/toast-provider";
 
 const PAGE_SIZE = 8;
 
 export default function DoctorsPage() {
+  const { toast } = useToast();
   const [search, setSearch] = useState("");
   const debouncedSearch = useDebouncedValue(search);
   const [specialization, setSpecialization] = useState("");
@@ -29,6 +32,9 @@ export default function DoctorsPage() {
   const [sort, setSort] = useState("newest");
   const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editDoctor, setEditDoctor] = useState<Doctor | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<Doctor | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
@@ -65,6 +71,29 @@ export default function DoctorsPage() {
     setTo("");
     setSort("newest");
   };
+
+  async function confirmDelete() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      await apiFetch(`/doctors/${deleteTarget.id}`, { method: "DELETE" });
+      toast({
+        title: "Doctor deleted",
+        description: `${deleteTarget.name} was removed from the directory.`,
+        tone: "success",
+      });
+      setDeleteTarget(null);
+      void mutate();
+    } catch (error) {
+      toast({
+        title: "Delete failed",
+        description: error instanceof Error ? error.message : "Please try again.",
+        tone: "error",
+      });
+    } finally {
+      setDeleting(false);
+    }
+  }
 
   return (
     <div className="space-y-5">
@@ -175,6 +204,7 @@ export default function DoctorsPage() {
                     <th scope="col" className="px-4 py-3 font-semibold">Patients</th>
                     <th scope="col" className="px-4 py-3 font-semibold">Last visit</th>
                     <th scope="col" className="px-5 py-3 text-right font-semibold">Joined</th>
+                    <th scope="col" className="px-4 py-3 text-right font-semibold">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -220,6 +250,26 @@ export default function DoctorsPage() {
                           </Link>
                         </span>
                       </td>
+                      <td className="px-4 py-4">
+                        <div className="flex items-center justify-end gap-1">
+                          <button
+                            type="button"
+                            onClick={() => setEditDoctor(doctor)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-slate-100 hover:text-slate-700"
+                            aria-label={`Edit ${doctor.name}`}
+                          >
+                            <Pencil className="size-4" />
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => setDeleteTarget(doctor)}
+                            className="rounded-lg p-2 text-slate-400 transition hover:bg-rose-50 hover:text-rose-600"
+                            aria-label={`Delete ${doctor.name}`}
+                          >
+                            <Trash2 className="size-4" />
+                          </button>
+                        </div>
+                      </td>
                     </tr>
                   ))}
                 </tbody>
@@ -229,15 +279,15 @@ export default function DoctorsPage() {
             <ul className="divide-y divide-slate-100 md:hidden">
               {data.data.map((doctor) => (
                 <li key={doctor.id}>
-                  <Link href={`/doctors/${doctor.id}`} className="flex flex-col gap-3 px-4 py-4 transition active:bg-slate-50">
-                    <div className="flex items-center gap-3">
+                  <div className="flex flex-col gap-3 px-4 py-4 transition active:bg-slate-50">
+                    <Link href={`/doctors/${doctor.id}`} className="flex items-center gap-3">
                       <Avatar name={doctor.name} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate font-medium text-slate-900">{doctor.name}</p>
                         <p className="truncate text-xs text-slate-500">{doctor.hospital}</p>
                       </div>
                       <ChevronRight className="size-4 shrink-0 text-slate-300" />
-                    </div>
+                    </Link>
                     <div className="flex flex-wrap items-center gap-2 pl-12">
                       <Badge className="bg-indigo-50 text-indigo-700 ring-indigo-100">
                         {doctor.specialization}
@@ -248,8 +298,26 @@ export default function DoctorsPage() {
                       <span className="text-xs text-slate-400">
                         Joined {formatDate(doctor.createdAt)}
                       </span>
+                      <div className="ml-auto flex gap-1">
+                        <button
+                          type="button"
+                          onClick={() => setEditDoctor(doctor)}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-slate-100"
+                          aria-label={`Edit ${doctor.name}`}
+                        >
+                          <Pencil className="size-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget(doctor)}
+                          className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          aria-label={`Delete ${doctor.name}`}
+                        >
+                          <Trash2 className="size-4" />
+                        </button>
+                      </div>
                     </div>
-                  </Link>
+                  </div>
                 </li>
               ))}
             </ul>
@@ -267,6 +335,25 @@ export default function DoctorsPage() {
           void mutate();
           setPage(1);
         }}
+      />
+      <DoctorFormModal
+        open={Boolean(editDoctor)}
+        onClose={() => setEditDoctor(null)}
+        doctor={editDoctor}
+        specializations={meta?.specializations ?? []}
+        onSaved={() => void mutate()}
+      />
+      <ConfirmDialog
+        open={Boolean(deleteTarget)}
+        onClose={() => setDeleteTarget(null)}
+        onConfirm={() => void confirmDelete()}
+        title="Delete doctor?"
+        description={
+          deleteTarget
+            ? `This removes ${deleteTarget.name} from the directory. Doctors with assigned patients cannot be deleted.`
+            : ""
+        }
+        loading={deleting}
       />
     </div>
   );

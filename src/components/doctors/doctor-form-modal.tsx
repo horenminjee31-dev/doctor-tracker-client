@@ -15,11 +15,15 @@ export function DoctorFormModal({
   open,
   onClose,
   onCreated,
+  onSaved,
+  doctor,
   specializations,
 }: {
   open: boolean;
   onClose: () => void;
-  onCreated: (doctor: Doctor) => void;
+  onCreated?: (doctor: Doctor) => void;
+  onSaved?: (doctor: Doctor) => void;
+  doctor?: Doctor | null;
   specializations: string[];
 }) {
   const { toast } = useToast();
@@ -30,12 +34,22 @@ export function DoctorFormModal({
 
   useEffect(() => {
     if (open) {
-      setForm(EMPTY);
+      setForm(
+        doctor
+          ? {
+              name: doctor.name,
+              specialization: doctor.specialization,
+              hospital: doctor.hospital,
+              phone: doctor.phone,
+              email: doctor.email,
+            }
+          : EMPTY
+      );
       setErrors({});
       setMessage(null);
       setSubmitting(false);
     }
-  }, [open]);
+  }, [open, doctor]);
 
   const update = (field: keyof typeof EMPTY) => (value: string) =>
     setForm((current) => ({ ...current, [field]: value }));
@@ -55,8 +69,10 @@ export function DoctorFormModal({
 
     setSubmitting(true);
     try {
-      const response = await apiFetch<{ data: Doctor }>("/doctors", {
-        method: "POST",
+      const response = await apiFetch<{ data: Doctor }>(
+        doctor ? `/doctors/${doctor.id}` : "/doctors",
+        {
+        method: doctor ? "PATCH" : "POST",
         body: {
           name: form.name.trim(),
           specialization: form.specialization,
@@ -64,9 +80,15 @@ export function DoctorFormModal({
           phone: form.phone.trim(),
           email: form.email.trim(),
         },
+        }
+      );
+      toast({
+        title: doctor ? "Doctor updated" : "Doctor added",
+        description: `${response.data.name} ${doctor ? "was updated." : "is now in the directory."}`,
+        tone: "success",
       });
-      toast({ title: "Doctor added", description: `${response.data.name} is now in the directory.`, tone: "success" });
-      onCreated(response.data);
+      if (doctor) onSaved?.(response.data);
+      else onCreated?.(response.data);
       onClose();
     } catch (error) {
       setErrors(fieldErrors(error));
@@ -79,15 +101,15 @@ export function DoctorFormModal({
     <Modal
       open={open}
       onClose={onClose}
-      title="Add a doctor"
-      description="Create a profile so patients can be registered under this doctor."
+      title={doctor ? "Edit doctor" : "Add a doctor"}
+      description={doctor ? "Update this doctor's practice profile." : "Create a profile so patients can be registered under this doctor."}
       footer={
         <>
           <Button variant="secondary" onClick={onClose} disabled={submitting}>
             Cancel
           </Button>
           <Button type="submit" form="doctor-form" loading={submitting}>
-            {submitting ? "Saving…" : "Save doctor"}
+            {submitting ? "Saving…" : doctor ? "Save changes" : "Save doctor"}
           </Button>
         </>
       }
