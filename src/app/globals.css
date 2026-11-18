@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-geist-mono), ui-monospace, monospace;
+
+  --color-page: #f3f6f8;
+  --color-ink: #0b1f2a;
+
+  --color-brand-50: #eefbf7;
+  --color-brand-100: #d5f5ec;
+  --color-brand-200: #aeeadb;
+  --color-brand-300: #79d8c4;
+  --color-brand-400: #43bda6;
+  --color-brand-500: #1fa38c;
+  --color-brand-600: #0f8574;
+  --color-brand-700: #0d6a5e;
+  --color-brand-800: #0f554d;
+  --color-brand-900: #0f463f;
+
+  --shadow-card: 0 1px 2px rgba(11, 31, 42, 0.04), 0 12px 32px -20px rgba(11, 31, 42, 0.25);
+  --shadow-float: 0 24px 64px -24px rgba(11, 31, 42, 0.35);
+}
+
+@layer base {
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: var(--color-page);
+    color: #0f172a;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+
+  ::selection {
+    background-color: var(--color-brand-200);
+    color: var(--color-brand-900);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-brand-500);
+    outline-offset: 2px;
+  }
+}
+
+@layer utilities {
+  .scrollbar-slim {
+    scrollbar-width: thin;
+    scrollbar-color: #cbd5e1 transparent;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar {
+    height: 8px;
+    width: 8px;
+  }
+
+  .scrollbar-slim::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 9999px;
+  }
+
+  .animate-rise {
+    animation: rise 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+}
+
+@keyframes rise {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
